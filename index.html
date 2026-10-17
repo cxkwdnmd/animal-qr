@@ -15,6 +15,8 @@
     img { display: block; width: 100%; max-height: 75vh; object-fit: contain; background: white; border-radius: 14px; }
     .hint { text-align: center; color: #555; font-size: 14px; line-height: 1.7; }
     .error { color: #b3261e; }
+    #diagnostics { margin: 18px 0; padding: 12px; background: #fff; border: 1px solid #ddd; border-radius: 10px; font: 12px/1.6 monospace; overflow-wrap: anywhere; white-space: pre-wrap; }
+    #diagnostics:empty { display:none; }
   </style>
 </head>
 <body>
@@ -22,8 +24,21 @@
   <main class="wrap">
     <div id="content"></div>
     <p id="hint" class="hint"></p>
+    <div id="diagnostics" aria-live="polite"></div>
   </main>
   <script>
+    const diagnostics = document.getElementById('diagnostics');
+    const started = Date.now();
+    function log(message) {
+      diagnostics.textContent += `[${((Date.now()-started)/1000).toFixed(1)}s] ${message}\n`;
+    }
+    window.addEventListener('error', e => log('JS错误: ' + (e.message || '未知') + ' ' + (e.filename || '')));
+    window.addEventListener('unhandledrejection', e => log('Promise错误: ' + String(e.reason?.message || e.reason || '未知')));
+    try {
+      const c = document.createElement('canvas');
+      log('WebGL: ' + (c.getContext('webgl2') ? 'WebGL2可用' : c.getContext('webgl') ? 'WebGL1可用' : '不可用'));
+    } catch (e) { log('WebGL检测错误: ' + e.message); }
+    log('浏览器: ' + navigator.userAgent);
     const animals = { pig:'猪', cow:'牛', sheep:'羊', horse:'马', dog:'狗', chicken:'鸡' };
     const animal = new URLSearchParams(location.search).get('animal');
     const title = document.getElementById('title');
@@ -42,9 +57,24 @@
         viewer.setAttribute('auto-rotate', '');
         viewer.setAttribute('shadow-intensity', '0.7');
         viewer.setAttribute('interaction-prompt', 'auto');
-        viewer.addEventListener('error', () => {
-          hint.textContent = '3D模型加载失败，请检查 models/chicken.glb 是否上传完整。';
+        viewer.addEventListener('load', () => { log('模型load事件：成功'); hint.textContent = '3D模型加载成功 · 单指旋转 · 双指缩放'; });
+        viewer.addEventListener('error', (event) => {
+          log('模型error事件: ' + (event.detail?.type || '未提供类型'));
+          hint.textContent = '3D加载失败，详细信息见下方诊断记录。';
           hint.classList.add('error');
+        });
+        viewer.addEventListener('progress', (event) => {
+          const p = event.detail?.totalProgress;
+          if (typeof p === 'number' && (p === 1 || p < 0.02 || Math.round(p * 100) % 25 === 0)) {
+            const pct = Math.round(p * 100);
+            if (viewer.dataset.lastProgress !== String(pct)) { viewer.dataset.lastProgress = String(pct); log('模型加载进度: ' + pct + '%'); }
+          }
+        });
+        window.addEventListener('load', () => {
+          setTimeout(() => log('model-viewer已注册: ' + Boolean(customElements.get('model-viewer'))), 1500);
+          setTimeout(() => {
+            if (!viewer.loaded) log('15秒后模型仍未完成加载（可能是网络慢，也可能加载失败）');
+          }, 15000);
         });
         content.appendChild(viewer);
         hint.textContent = '单指拖动旋转 · 双指缩放 · 可用手势调整视角';
