@@ -1,69 +1,65 @@
-
-<!DOCTYPE html>
-<html lang="zh">
+<!doctype html>
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1">
-
-  <title>动物骨骼标本查询系统</title>
-
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>动物骨骼标本展示</title>
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.1.0/model-viewer.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background-color: #f5f5f5;
-      padding: 20px;
-    }
-
-    h1 {
-      color: #333;
-    }
-
-    img {
-      max-width: 100%;
-      max-height: 70vh;
-      object-fit: contain;
-      border-radius: 10px;
-    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f6f7f9; color: #202124; font-family: system-ui, -apple-system, 'Microsoft YaHei', sans-serif; }
+    header { padding: 18px 16px; text-align: center; background: white; box-shadow: 0 1px 6px #00000012; }
+    h1 { font-size: 22px; margin: 0; }
+    .wrap { max-width: 960px; margin: 20px auto; padding: 0 12px; }
+    model-viewer { display: block; width: 100%; height: min(75vh, 740px); min-height: 420px; background: #e9edf1; border-radius: 14px; }
+    img { display: block; width: 100%; max-height: 75vh; object-fit: contain; background: white; border-radius: 14px; }
+    .hint { text-align: center; color: #555; font-size: 14px; line-height: 1.7; }
+    .error { color: #b3261e; }
   </style>
 </head>
-
 <body>
-
-  <h1 id="title">动物骨骼标本查询系统</h1>
-
-  <img id="animalImage" alt="动物骨骼图片">
-
+  <header><h1 id="title">动物骨骼标本展示</h1></header>
+  <main class="wrap">
+    <div id="content"></div>
+    <p id="hint" class="hint"></p>
+  </main>
   <script>
-    const animals = {
-      pig: "猪",
-      cow: "牛",
-      sheep: "羊",
-      horse: "马",
-      dog: "狗",
-      chicken: "鸡"
-    };
-
-    const params = new URLSearchParams(
-      window.location.search
-    );
-
-    const animal = params.get("animal");
-
-    if (animals[animal]) {
-      document.getElementById("title")
-        .textContent = animals[animal] + "骨骼标本";
-
-      document.getElementById("animalImage")
-        .src = "images/" + animal + ".jpg";
+    const animals = { pig:'猪', cow:'牛', sheep:'羊', horse:'马', dog:'狗', chicken:'鸡' };
+    const animal = new URLSearchParams(location.search).get('animal');
+    const title = document.getElementById('title');
+    const content = document.getElementById('content');
+    const hint = document.getElementById('hint');
+    if (!animals[animal]) {
+      title.textContent = '请选择动物';
+      hint.textContent = '网址示例：?animal=chicken';
     } else {
-      document.getElementById("title")
-        .textContent = "请选择动物";
-      document.getElementById("animalImage")
-        .style.display = "none";
+      title.textContent = animals[animal] + '骨骼标本';
+      if (animal === 'chicken') {
+        const viewer = document.createElement('model-viewer');
+        viewer.setAttribute('src', 'models/chicken.glb');
+        viewer.setAttribute('alt', '鸡的三维解剖模型');
+        viewer.setAttribute('camera-controls', '');
+        viewer.setAttribute('auto-rotate', '');
+        viewer.setAttribute('shadow-intensity', '0.7');
+        viewer.setAttribute('interaction-prompt', 'auto');
+        viewer.addEventListener('error', () => {
+          hint.textContent = '3D模型加载失败，请检查 models/chicken.glb 是否上传完整。';
+          hint.classList.add('error');
+        });
+        content.appendChild(viewer);
+        hint.textContent = '单指拖动旋转 · 双指缩放 · 可用手势调整视角';
+      } else {
+        const img = document.createElement('img');
+        img.src = `images/${animal}.jpg`;
+        img.alt = `${animals[animal]}骨骼图片`;
+        img.addEventListener('error', () => {
+          hint.textContent = '图片加载失败，请检查 images 文件夹和图片文件名。';
+          hint.classList.add('error');
+        });
+        content.appendChild(img);
+        hint.textContent = '当前为图片展示，3D模型后续更新。';
+      }
     }
   </script>
-
 </body>
 </html>
